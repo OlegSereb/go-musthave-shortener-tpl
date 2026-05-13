@@ -24,10 +24,13 @@ func NewURLHandler(svc *service.URLService) *URLHandler {
 // Ожидает: тело запроса с оригинальным URL в формате text/plain
 // Возвращает: 201 + короткая ссылка, или 400 при ошибке
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
+	// ✅ Устанавливаем заголовок Content-Type ДО любого WriteHeader()
+	w.Header().Set("Content-Type", "text/plain")
+
 	// Логируем входящий запрос для отладки
 	log.Printf("POST / : попытка сократить URL")
 
-	// Проверяем метод запроса (дополнительная защита)
+	// Проверяем метод запроса
 	if r.Method != http.MethodPost {
 		log.Printf("  ❌ неверный метод: %s", r.Method)
 		w.WriteHeader(http.StatusBadRequest)
@@ -63,10 +66,9 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("  ✅ создана короткая ссылка: %s", shortURL)
 
-	// Формируем успешный ответ
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated) // 201
-	// Отправляем короткую ссылку в теле ответа (без лишних символов!)
+	// ✅ Формируем успешный ответ: сначала статус 201, потом тело
+	// Важно: WriteHeader должен быть ВЫЗВАН явно, иначе по умолчанию будет 200
+	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte(shortURL))
 }
 
@@ -107,7 +109,6 @@ func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	log.Printf("  ✅ найдено: %s → %s", shortID, originalURL)
 
 	// Выполняем временное перенаправление (код 307)
-	// 307 сохраняет метод и тело запроса при редиректе (в отличие от 302)
 	w.Header().Set("Location", originalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
